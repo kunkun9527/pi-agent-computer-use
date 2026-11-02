@@ -22,24 +22,17 @@ const label = (value: unknown) => typeof value === "string" ? value.replace(/[\r
 
 /** Agent guidance shared by the IDE plugin and the standalone tools, one form per line like the IDE's own field lines. */
 export const computerPathHelp = (names: ComputerToolNames) => [
-  `computer:machine/<name> — a machine, local or configured; /windows and /apps for ${names.search}, /displays, /display/primary and /display/<ref> for display pixels.`,
-  `computer:window/… — a window from ${names.search} or computer_open: UI tree and overview image; computer:<name> after computer_window name.`,
-  `computer:window/…/<viewport> — a viewport from computer_view: its image at full resolution.`,
-  `computer:observation/… — the result of an earlier ${names.read}; computer:sequence/… — frames from computer_record.`,
-  `computer:session — machines, sandboxes, windows and names so far.`,
-  `Results show short forms such as computer:lab/w3qk; docs:computer has the rest.`,
+  `computer:machine/<name> — machine; /windows and /apps via ${names.search}; /displays for screens.`,
+  `computer:window/… — window from ${names.search}; UI tree and screenshot. Named: computer:<name>.`,
+  `computer:window/…/<viewport> — named cropped view from computer_view.`,
+  `computer:observation/… — prior ${names.read}; computer:sequence/… — frames.`,
+  "computer:session — current resources. Use fresh refs; docs:computer explains more.",
 ].join("\n");
 export const computerViewsHelp = (names: ComputerToolNames) => [
-  `On a computer window: full (default), image, ui — pixels and UI, pixels only, UI only.`,
-  `aria — UI as a Playwright aria snapshot with [ref=…].`,
-  `dom[:{target,depth,boxes,log}] — aria snapshot of a browser page opened with computer_open; use alone.`,
-  `state — minimized, maximized, foreground, bounds, hung; use alone.`,
-  `changes — only what changed since the window's previous observation.`,
-  `ocr — Windows OCR lines with boxes; regions — icons and text areas from Cua perception.`,
-  `capture:{maxLongEdge,scale,max_elements,max_depth,hints} — limits of one ${names.read}.`,
-  `element:inspect|scope|highlight|crop|text,<ref> — one element of an observation.`,
-  `region:x,y,w,h — part of a display observation.`,
-  `frames:first|last|all|endpoints|changed or frames:{indexes|from,to,as:sheet|max|min} — frames of a sequence.`,
+  "Window: full (default), image, ui, aria, state, changes; browser: dom[:{target,depth,boxes,log}].",
+  "Extras: ocr, regions, element:inspect|scope|highlight|crop|text,<ref>, region:x,y,w,h.",
+  `Capture: capture:{maxLongEdge,scale,max_elements,max_depth,hints} in ${names.read}.`,
+  "Frames: frames:first|last|all|endpoints|changed or frames:{indexes|from,to,as:sheet|max|min}.",
 ].join("\n");
 export const COMPUTER_SEARCH_HELP = "computer:machine/<name>/windows or /apps, or an observation address.";
 export const COMPUTER_DELETE_HELP = "computer:window/… closes that window (?force=true kills its hung app if this session opened it); computer:sandbox/…, computer:machine/<name> and computer:session release what they name.";

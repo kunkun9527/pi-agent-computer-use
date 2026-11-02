@@ -28,7 +28,7 @@ export function actionResult(action: Action) {
 }
 
 const openParameters = Type.Object({
-  at: Type.String({ description: "Where to open: computer:machine/<name>, a computer:sandbox/… address, an app address from {search} of computer:machine/<name>/apps, or the window address of a running Chromium-based browser or app to attach Playwright to." }),
+  at: Type.String({ description: "Machine/sandbox to launch into, app address to open, or browser window to attach." }),
   app: Type.Optional(Type.String({ description: "Installed app name as {search} of computer:machine/<name>/apps lists it, such as Notepad." })),
   path: Type.Optional(Type.String({ description: "Absolute Windows path of an .exe to start, such as C:\\Tools\\app.exe." })),
   args: Type.Optional(Type.Array(Type.String(), { maxItems: 32, description: "Command-line arguments for path." })),
@@ -95,7 +95,7 @@ export function windowCommand(params: Static<typeof windowParameters>): Record<s
 }
 
 const viewParameters = Type.Object({
-  viewport: Type.String({ description: "Viewport address: a window's name or address with the viewport's name after it, such as computer:game/pano or computer:<machine>/w3qk/pano. The name is 1-32 lowercase letters, digits, - or _, starting with a letter. A new name makes the viewport and needs x, y, width and height; for an existing one, give only what changes." }),
+  viewport: Type.String({ description: "Window address plus /<name>; new view needs x,y,width,height; existing view takes changed fields." }),
   x: Type.Optional(Type.Integer({ minimum: 0, description: "Left edge in pixels of the window's latest image." })),
   y: Type.Optional(Type.Integer({ minimum: 0, description: "Top edge in pixels of the window's latest image." })),
   width: Type.Optional(Type.Integer({ minimum: 1, description: "Width in pixels of the window's latest image." })),
@@ -289,14 +289,14 @@ export function recordCommand(params: Static<typeof recordParameters>): RecordRu
   return { command: { action: "audio_record", ...fields } };
 }
 
-const inputWindow = Type.String({ description: "Window or viewport address from {search}, {read}, a name or computer_view." });
-const inputTarget = (what: string) => Type.Optional(Type.String({ description: `${what}: a ref from the window's latest {read} (1:a in a window {read}, e12 in a page snapshot) or a Playwright locator such as getByRole('button', { name: 'Save' }).` }));
+const inputWindow = Type.String({ description: "Window/viewport address from {read}/{search}." });
+const inputTarget = (what: string) => Type.Optional(Type.String({ description: `${what}: ref from latest {read} (native 1:a, page e12), or Playwright locator.` }));
 const coordinate = (description: string) => Type.Optional(Type.Number({ minimum: 0, description }));
-const pointX = "Point instead of target, with y: pixels of the latest image of the window or viewport, or CSS pixels of a browser page. A point on a native window gets the real pointer: the window comes to the front.";
-const pointY = "Point instead of target, with x.";
-const pointSpace = Type.Optional(StringEnum(["page", "window"] as const, { description: "Browser windows:\npage (default) — refs, locators and CSS points of the page.\nwindow — refs and points of a window {read}, such as the browser's own toolbar." }));
-const modifiersField = Type.Optional(Type.Array(StringEnum(["ctrl", "shift", "alt", "win"] as const), { maxItems: 4, description: "Keys held during the action." }));
-const locatorTimeout = Type.Optional(Type.Integer({ minimum: 0, maximum: 60000, description: "How long a locator target may take to match one ready element, default 5000." }));
+const pointX = "With y, point in latest window image pixels or browser CSS pixels. Native point input uses foreground.";
+const pointY = "With x, point instead of target.";
+const pointSpace = Type.Optional(StringEnum(["page", "window"] as const, { description: "Browser: page (default) for DOM; window for native UI." }));
+const modifiersField = Type.Optional(Type.Array(StringEnum(["ctrl", "shift", "alt", "win"] as const), { maxItems: 4, description: "Modifier keys." }));
+const locatorTimeout = Type.Optional(Type.Integer({ minimum: 0, maximum: 60000, description: "Locator wait ms; default 5000." }));
 const PAGE_MODIFIERS: Record<string, string> = { ctrl: "Control", shift: "Shift", alt: "Alt", win: "Meta" };
 
 type Endpoint = { target?: string; x?: number; y?: number };
@@ -330,8 +330,8 @@ function holding(modifiers: string[] | undefined, start: number, end: number, ev
 
 const clickParameters = Type.Object({
   window: inputWindow, target: inputTarget("The element to click"), x: coordinate(pointX), y: coordinate(pointY), space: pointSpace,
-  button: Type.Optional(StringEnum(["left", "right", "middle"] as const, { description: "Mouse button, default left." })),
-  count: Type.Optional(Type.Integer({ minimum: 1, maximum: 3, description: "Clicks: 2 is a double click, 3 a triple click. Default 1." })),
+  button: Type.Optional(StringEnum(["left", "right", "middle"] as const, { description: "Default left." })),
+  count: Type.Optional(Type.Integer({ minimum: 1, maximum: 3, description: "Click count; default 1." })),
   modifiers: modifiersField, timeout_ms: locatorTimeout,
 }, { additionalProperties: false });
 
@@ -352,7 +352,7 @@ export function clickPlan(params: Static<typeof clickParameters>): InputPlan {
 
 const hoverParameters = Type.Object({
   window: inputWindow, target: inputTarget("The element to point at"), x: coordinate(pointX), y: coordinate(pointY), space: pointSpace,
-  dwell_ms: Type.Optional(Type.Integer({ minimum: 1, maximum: 10000, description: "Native windows: how long the pointer rests there before the result, default 300." })),
+  dwell_ms: Type.Optional(Type.Integer({ minimum: 1, maximum: 10000, description: "Native dwell ms; default 300." })),
   timeout_ms: locatorTimeout,
 }, { additionalProperties: false });
 
@@ -364,15 +364,15 @@ export function hoverPlan(params: Static<typeof hoverParameters>): InputPlan {
 }
 
 const endpoint = (what: string) => Type.Object({
-  target: Type.Optional(Type.String({ description: `${what}: a ref from the window's latest {read}, or a Playwright locator on browser pages.` })),
+  target: Type.Optional(Type.String({ description: `${what}: fresh element ref or page locator.` })),
   x: Type.Optional(Type.Number({ minimum: 0 })), y: Type.Optional(Type.Number({ minimum: 0 })),
-}, { additionalProperties: false, description: `${what}: a target, or a point (x and y) in pixels of the window's latest image or CSS pixels of a browser page.` });
+}, { additionalProperties: false, description: `${what}: target or x,y point (window image/browser CSS pixels).` });
 const dragParameters = Type.Object({
   window: inputWindow, from: endpoint("Where the drag starts"), to: endpoint("Where the drag ends"), space: pointSpace,
   via: Type.Optional(Type.Array(Type.Object({ x: Type.Number({ minimum: 0 }), y: Type.Number({ minimum: 0 }) }, { additionalProperties: false }),
     { minItems: 1, maxItems: 254, description: "Points the pointer passes through on the way, in order, for a path rather than a straight line; left button only." })),
-  duration_ms: Type.Optional(Type.Integer({ minimum: 0, maximum: 10000, description: "How long the move takes, default 500." })),
-  button: Type.Optional(StringEnum(["left", "right", "middle"] as const, { description: "Button held during the drag, default left." })),
+  duration_ms: Type.Optional(Type.Integer({ minimum: 0, maximum: 10000, description: "Drag duration ms; default 500." })),
+  button: Type.Optional(StringEnum(["left", "right", "middle"] as const, { description: "Default left." })),
   modifiers: modifiersField,
 }, { additionalProperties: false });
 
@@ -392,8 +392,8 @@ export function dragPlan(params: Static<typeof dragParameters>): InputPlan {
 
 const scrollParameters = Type.Object({
   window: inputWindow, target: inputTarget("The element to scroll; omit for the middle of the window or page"), x: coordinate(pointX), y: coordinate(pointY), space: pointSpace,
-  delta_x: Type.Optional(Type.Integer({ minimum: -50, maximum: 50, description: "Wheel notches to the right (negative: left)." })),
-  delta_y: Type.Optional(Type.Integer({ minimum: -50, maximum: 50, description: "Wheel notches down (negative: up). One notch scrolls about 100 CSS pixels in a browser; apps decide their own distance." })),
+  delta_x: Type.Optional(Type.Integer({ minimum: -50, maximum: 50, description: "Wheel notches: positive right." })),
+  delta_y: Type.Optional(Type.Integer({ minimum: -50, maximum: 50, description: "Wheel notches: positive down; browser notch ≈100px." })),
   timeout_ms: locatorTimeout,
 }, { additionalProperties: false });
 
@@ -411,11 +411,11 @@ export function scrollPlan(params: Static<typeof scrollParameters>): InputPlan {
 }
 
 const typeParameters = Type.Object({
-  window: inputWindow, text: Type.String({ maxLength: 20000, description: "Text to type, as is: newlines and quotes stay text. Native windows take up to 2000 characters and get real key presses, so the window comes to the front; replace sets the value through UI Automation instead." }),
+  window: inputWindow, text: Type.String({ maxLength: 20000, description: "Literal text. Native typing uses foreground keys (max 2000 chars); replace uses UIA." }),
   target: inputTarget("The field to type into; omit for the focused element"), space: pointSpace,
-  replace: Type.Optional(Type.Boolean({ description: "Replace the field's whole value instead of typing at the caret; needs target." })),
-  submit: Type.Optional(Type.Boolean({ description: "Press Enter after the text." })),
-  delay_ms: Type.Optional(Type.Integer({ minimum: 0, maximum: 200, description: "Native windows: pause between characters." })),
+  replace: Type.Optional(Type.Boolean({ description: "Replace whole value; requires target." })),
+  submit: Type.Optional(Type.Boolean({ description: "Enter after typing." })),
+  delay_ms: Type.Optional(Type.Integer({ minimum: 0, maximum: 200, description: "Native inter-key delay ms." })),
   timeout_ms: locatorTimeout,
 }, { additionalProperties: false });
 
@@ -431,9 +431,9 @@ export function typePlan(params: Static<typeof typeParameters>): InputPlan {
 }
 
 const pressParameters = Type.Object({
-  window: inputWindow, key: Type.String({ maxLength: 64, description: "A key with optional modifiers joined by +, such as Enter, ctrl+s, shift+Tab, F5, ArrowDown or a. Native windows get real key presses, so the window comes to the front." }),
+  window: inputWindow, key: Type.String({ maxLength: 64, description: "Key/chord, e.g. Enter, ctrl+s, shift+Tab. Native keys take foreground." }),
   target: inputTarget("The element to focus first; omit for the focused element"), space: pointSpace,
-  hold_ms: Type.Optional(Type.Integer({ minimum: 1, maximum: 10000, description: "Native windows: hold the keys down this long, for apps and games that read held keys." })),
+  hold_ms: Type.Optional(Type.Integer({ minimum: 1, maximum: 10000, description: "Native key-hold ms." })),
 }, { additionalProperties: false });
 const PAGE_KEYS: Record<string, string> = { enter: "Enter", return: "Enter", esc: "Escape", escape: "Escape", tab: "Tab", space: "Space", backspace: "Backspace", delete: "Delete", del: "Delete",
   up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", home: "Home", end: "End", pageup: "PageUp", pagedown: "PageDown", pgup: "PageUp", pgdn: "PageDown" };
@@ -457,9 +457,9 @@ export function pressPlan(params: Static<typeof pressParameters>): InputPlan {
 
 const selectParameters = Type.Object({
   window: inputWindow, target: inputTarget("The list, select, checkbox or option; not used with menu"), space: pointSpace,
-  values: Type.Optional(Type.Array(Type.String(), { minItems: 1, maxItems: 64, description: "Options to choose in the target list, by label or value. Native lists take one; omit values to select the target option itself." })),
-  checked: Type.Optional(Type.Boolean({ description: "Set the target checkbox, radio or toggle to checked (true) or unchecked (false); nothing is sent when it already is." })),
-  menu: Type.Optional(Type.Array(Type.String(), { minItems: 1, maxItems: 16, description: "Native windows: menu labels from the menu bar to the item, such as [\"File\", \"Save As...\"]." })),
+  values: Type.Optional(Type.Array(Type.String(), { minItems: 1, maxItems: 64, description: "Option labels/values; native list accepts one. Omit to select target." })),
+  checked: Type.Optional(Type.Boolean({ description: "Desired checkbox/radio/toggle state." })),
+  menu: Type.Optional(Type.Array(Type.String(), { minItems: 1, maxItems: 16, description: "Native menu path, e.g. [\"File\",\"Save As...\"]." })),
   timeout_ms: locatorTimeout,
 }, { additionalProperties: false });
 
@@ -516,7 +516,7 @@ export function registerComputerTools(pi: ExtensionAPI, resources: ComputerResou
   const rendered = (name: string) => typedRenderers(name, describe);
   pi.registerTool({
     ...common, name: "computer_open", label: "Computer open",
-    description: "Use computer_open to start an app, a Playwright browser, a Windows Sandbox or an isolated session on a machine, or to attach Playwright to a running browser window.",
+    description: "Open app/browser/sandbox/session or attach existing browser.",
     parameters: fillToolNames(openParameters, names),
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     ...rendered("computer_open"),
@@ -531,7 +531,7 @@ export function registerComputerTools(pi: ExtensionAPI, resources: ComputerResou
   });
   pi.registerTool({
     ...common, name: "computer_window", label: "Computer window",
-    description: "Use computer_window to move, resize, maximize, minimize or restore an app window by its address without keys or clicks, or to give it a short name.",
+    description: "Move/resize/minimize/maximize/restore/name a window.",
     parameters: fillToolNames(windowParameters, names),
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     ...rendered("computer_window"),
@@ -545,7 +545,7 @@ export function registerComputerTools(pi: ExtensionAPI, resources: ComputerResou
   });
   pi.registerTool({
     ...common, name: "computer_view", label: "Computer view",
-    description: fillToolNames("Use computer_view to work on part of a window: it makes, moves or resizes a viewport, a named rectangle of the window that follows it. Pass the viewport's address to {read} and the computer_* input tools instead of the whole window.", names),
+    description: fillToolNames("Create/update a named viewport; use its address for reads and input.", names),
     parameters: fillToolNames(viewParameters, names),
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     ...rendered("computer_view"),
@@ -585,7 +585,7 @@ export function registerComputerTools(pi: ExtensionAPI, resources: ComputerResou
   });
   pi.registerTool({
     ...common, name: "computer_files", label: "Computer files",
-    description: "Use computer_files to copy files between the workspace and this session's own folder on a machine, or to list that folder, so apps there can open or save them.",
+    description: "List or transfer session files.",
     parameters: fillToolNames(filesParameters, names),
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     ...rendered("computer_files"),
@@ -613,7 +613,7 @@ export function registerComputerTools(pi: ExtensionAPI, resources: ComputerResou
   });
   pi.registerTool({
     ...common, name: "computer_record", label: "Computer record",
-    description: "Use computer_record to record a machine's display to video or its playback audio, to capture frames of a window or display over time, or to watch a window or viewport in the background while acting on it.",
+    description: "Record video/audio, timed frames or watch a window.",
     parameters: fillToolNames(recordParameters, names),
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     ...rendered("computer_record"),
@@ -644,63 +644,63 @@ export function registerComputerTools(pi: ExtensionAPI, resources: ComputerResou
   const inputAnnotations = { readOnlyHint: false, destructiveHint: true, openWorldHint: true };
   pi.registerTool({
     ...common, name: "computer_click", label: "Computer click",
-    description: "Use computer_click to click an element or a point of a window.",
+    description: "Click a UI target or point.",
     parameters: fillToolNames(clickParameters, names), annotations: inputAnnotations,
     ...rendered("computer_click"),
     async execute(_id, params, signal, _update, ctx) { return input(params.window, "click", () => clickPlan(params), ctx.cwd, signal); },
   });
   pi.registerTool({
     ...common, name: "computer_hover", label: "Computer hover",
-    description: "Use computer_hover to rest the pointer on an element or a point without clicking.",
+    description: "Hover over target or point.",
     parameters: fillToolNames(hoverParameters, names), annotations: inputAnnotations,
     ...rendered("computer_hover"),
     async execute(_id, params, signal, _update, ctx) { return input(params.window, "hover", () => hoverPlan(params), ctx.cwd, signal); },
   });
   pi.registerTool({
     ...common, name: "computer_drag", label: "Computer drag",
-    description: "Use computer_drag to press a button at one element or point, move to another, optionally through a path, and release there.",
+    description: "Drag between points/targets, optionally via path.",
     parameters: fillToolNames(dragParameters, names), annotations: inputAnnotations,
     ...rendered("computer_drag"),
     async execute(_id, params, signal, _update, ctx) { return input(params.window, "drag", () => dragPlan(params), ctx.cwd, signal); },
   });
   pi.registerTool({
     ...common, name: "computer_scroll", label: "Computer scroll",
-    description: "Use computer_scroll to turn the mouse wheel over an element, a point or the middle of a window or page.",
+    description: "Scroll target, point or window/page.",
     parameters: fillToolNames(scrollParameters, names), annotations: inputAnnotations,
     ...rendered("computer_scroll"),
     async execute(_id, params, signal, _update, ctx) { return input(params.window, "scroll", () => scrollPlan(params), ctx.cwd, signal); },
   });
   pi.registerTool({
     ...common, name: "computer_type", label: "Computer type",
-    description: "Use computer_type to type text into a field or the focused element, or to replace a field's value.",
+    description: "Type or replace field text.",
     parameters: fillToolNames(typeParameters, names), annotations: inputAnnotations,
     ...rendered("computer_type"),
     async execute(_id, params, signal, _update, ctx) { return input(params.window, "type", () => typePlan(params), ctx.cwd, signal); },
   });
   pi.registerTool({
     ...common, name: "computer_press", label: "Computer press",
-    description: "Use computer_press to press a key or shortcut, or to hold keys down for a time.",
+    description: "Press a key/chord or hold keys.",
     parameters: fillToolNames(pressParameters, names), annotations: inputAnnotations,
     ...rendered("computer_press"),
     async execute(_id, params, signal, _update, ctx) { return input(params.window, "press", () => pressPlan(params), ctx.cwd, signal); },
   });
   pi.registerTool({
     ...common, name: "computer_select", label: "Computer select",
-    description: "Use computer_select to choose options in a list or select element, set a checkbox, radio or toggle, or open an app's menu item.",
+    description: "Select options, toggle controls or open a menu.",
     parameters: fillToolNames(selectParameters, names), annotations: inputAnnotations,
     ...rendered("computer_select"),
     async execute(_id, params, signal, _update, ctx) { return input(params.window, "select", () => selectPlan(params), ctx.cwd, signal); },
   });
   pi.registerTool({
     ...common, name: "computer_timeline", label: "Computer timeline",
-    description: "Use computer_timeline to play timed key, button, pointer, wheel and pen events in one call.",
+    description: "Run timed key/pointer/wheel/pen events.",
     parameters: fillToolNames(timelineParameters, names), annotations: inputAnnotations,
     ...rendered("computer_timeline"),
     async execute(_id, params, signal, _update, ctx) { return input(params.window, "timeline", () => timelinePlan(params), ctx.cwd, signal); },
   });
   pi.registerTool({
     ...common, name: "computer_display", label: "Computer display",
-    description: "Use computer_display to change a display's resolution; closing computer use restores it.",
+    description: "Change display resolution (restored on close).",
     parameters: fillToolNames(displayParameters, names),
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     ...rendered("computer_display"),
