@@ -29,23 +29,23 @@ export function actionResult(action: Action) {
 
 const openParameters = Type.Object({
   at: Type.String({ description: "Machine/sandbox to launch into, app address to open, or browser window to attach." }),
-  app: Type.Optional(Type.String({ description: "Installed app name as {search} of computer:machine/<name>/apps lists it, such as Notepad." })),
-  path: Type.Optional(Type.String({ description: "Absolute Windows path of an .exe to start, such as C:\\Tools\\app.exe." })),
-  args: Type.Optional(Type.Array(Type.String(), { maxItems: 32, description: "Command-line arguments for path." })),
-  debugging: Type.Optional(Type.Boolean({ description: "Start the WebView2 app at path with its debugging port open, so its window can be attached." })),
-  browser: Type.Optional(StringEnum(["chrome", "msedge", "firefox"] as const, { description: "Open a new visible browser driven by Playwright; its window takes DOM reads and page actions." })),
-  url: Type.Optional(Type.String({ description: "http(s) page the new browser opens." })),
-  profile: Type.Optional(Type.Literal("agent", { description: "agent — a persistent profile whose logins stay for later sessions. Omit for a disposable profile." })),
+  app: Type.Optional(Type.String({ description: "App name from {search} of machine /apps." })),
+  path: Type.Optional(Type.String({ description: "Absolute Windows .exe path." })),
+  args: Type.Optional(Type.Array(Type.String(), { maxItems: 32, description: "Arguments for path." })),
+  debugging: Type.Optional(Type.Boolean({ description: "Enable WebView2 debugging when starting path." })),
+  browser: Type.Optional(StringEnum(["chrome", "msedge", "firefox"] as const, { description: "Launch Playwright browser for DOM/page actions." })),
+  url: Type.Optional(Type.String({ description: "Initial http(s) page." })),
+  profile: Type.Optional(Type.Literal("agent", { description: "agent: persistent login profile; omit for disposable." })),
   sandbox: Type.Optional(Type.Object({
     import: Type.Optional(Type.Array(Type.Union([Type.String(), Type.Object({ host: Type.String(), guest: Type.Optional(Type.String()), writable: Type.Optional(Type.Boolean()) }, { additionalProperties: false })]),
-      { maxItems: 8, description: "Host folders shared into the sandbox, read-only unless writable." })),
-    export: Type.Optional(Type.String({ description: "One host folder the sandbox can write to." })),
-  }, { additionalProperties: false, description: "Open a disposable Windows Sandbox on that machine, apart from the user's desktop; pass {} for no shared folders." })),
-  isolated_session: Type.Optional(Type.Boolean({ description: "Open an isolated agent session on that machine, with its own desktop and foreground input." })),
+      { maxItems: 8, description: "Shared folders; read-only unless writable." })),
+    export: Type.Optional(Type.String({ description: "Writable host output folder." })),
+  }, { additionalProperties: false, description: "Disposable Windows Sandbox; {} for no shares." })),
+  isolated_session: Type.Optional(Type.Boolean({ description: "Separate Windows desktop/session." })),
   webview2_debugging: Type.Optional(Type.Object({
-    app: Type.String({ description: "The app's executable file name, such as ms-teams.exe." }),
-    enabled: Type.Boolean({ description: "true opens the debugging port from the app's next start, whoever starts it; false turns it off again." }),
-  }, { additionalProperties: false, description: "Open a WebView2 app's debugging port from its next start on that machine, so its window can be attached; opens nothing. Windows may ask the person there to approve." })),
+    app: Type.String({ description: "Executable name, e.g. ms-teams.exe." }),
+    enabled: Type.Boolean({ description: "Enable on next launch; false disables." }),
+  }, { additionalProperties: false, description: "Configure WebView2 debugging (no launch); may need approval." })),
 }, { additionalProperties: false });
 
 /** The command that opens what computer_open asks for at this address. */
@@ -73,14 +73,14 @@ export function openCommand(address: ComputerAddress, params: Static<typeof open
 }
 
 const windowParameters = Type.Object({
-  window: Type.String({ description: "Window address from {search}, {read} or a name, such as computer:<machine>/w3qk or computer:game." }),
+  window: Type.String({ description: "Window ref from {search}/{read} or named address." }),
   action: StringEnum(["move", "resize", "maximize", "minimize", "restore", "name"] as const,
     { description: "restore brings a minimized window back; name gives the window a short address computer:<as>." }),
-  as: Type.Optional(Type.String({ description: "name: 1-32 lowercase letters, digits, - or _, starting with a letter, such as game. It resolves until the window closes." })),
-  x: Type.Optional(Type.Integer({ description: "move: new left edge in Windows desktop pixels." })),
-  y: Type.Optional(Type.Integer({ description: "move: new top edge in Windows desktop pixels." })),
-  width: Type.Optional(Type.Integer({ minimum: 1, description: "resize: new width in Windows desktop pixels." })),
-  height: Type.Optional(Type.Integer({ minimum: 1, description: "resize: new height in Windows desktop pixels." })),
+  as: Type.Optional(Type.String({ description: "Name: 1–32 a-z0-9_-, starting with letter; valid until close." })),
+  x: Type.Optional(Type.Integer({ description: "Move left in desktop px." })),
+  y: Type.Optional(Type.Integer({ description: "Move top in desktop px." })),
+  width: Type.Optional(Type.Integer({ minimum: 1, description: "Resize width in desktop px." })),
+  height: Type.Optional(Type.Integer({ minimum: 1, description: "Resize height in desktop px." })),
 }, { additionalProperties: false });
 
 /** The window management command of computer_window. */
@@ -95,48 +95,48 @@ export function windowCommand(params: Static<typeof windowParameters>): Record<s
 }
 
 const viewParameters = Type.Object({
-  viewport: Type.String({ description: "Window address plus /<name>; new view needs x,y,width,height; existing view takes changed fields." }),
-  x: Type.Optional(Type.Integer({ minimum: 0, description: "Left edge in pixels of the window's latest image." })),
-  y: Type.Optional(Type.Integer({ minimum: 0, description: "Top edge in pixels of the window's latest image." })),
-  width: Type.Optional(Type.Integer({ minimum: 1, description: "Width in pixels of the window's latest image." })),
-  height: Type.Optional(Type.Integer({ minimum: 1, description: "Height in pixels of the window's latest image." })),
+  viewport: Type.String({ description: "Window/<name> (1–32 a-z0-9_-, starts with letter). New: x,y,width,height; existing: changed fields." }),
+  x: Type.Optional(Type.Integer({ minimum: 0, description: "Left in latest image px." })),
+  y: Type.Optional(Type.Integer({ minimum: 0, description: "Top in latest image px." })),
+  width: Type.Optional(Type.Integer({ minimum: 1, description: "Width in latest image px." })),
+  height: Type.Optional(Type.Integer({ minimum: 1, description: "Height in latest image px." })),
 }, { additionalProperties: false });
 
 const displayParameters = Type.Object({
-  display: Type.String({ description: "computer:machine/<name>/display/primary, or a display address listed by {read} of computer:machine/<name>/displays." }),
-  width: Type.Integer({ minimum: 640, maximum: 16384, description: "New width in physical pixels." }),
-  height: Type.Integer({ minimum: 480, maximum: 16384, description: "New height in physical pixels." }),
+  display: Type.String({ description: "Machine /display/primary or display ref from {read}." }),
+  width: Type.Integer({ minimum: 640, maximum: 16384, description: "Width in physical px." }),
+  height: Type.Integer({ minimum: 480, maximum: 16384, description: "Height in physical px." }),
 }, { additionalProperties: false });
 
 /** An element of a window or page: a Playwright locator string, or locator fields that must all match. */
 const targetSchema = (description: string) => Type.Union([
-  Type.String({ description: "A Playwright locator such as getByRole('button', { name: 'Save' }) or getByLabel('Name').nth(1)." }),
+  Type.String({ description: "Playwright locator, e.g. getByRole('button',{name:'Save'})." }),
   Type.Object({
-    ref: Type.Optional(Type.String({ description: "Browser pages: an aria ref such as e12 from the page's latest snapshot, alone." })),
+    ref: Type.Optional(Type.String({ description: "Page ref (e12) from latest snapshot; use alone." })),
     role: Type.Optional(Type.String()), name: Type.Optional(Type.String({ description: "Accessible name; needs role." })),
     label: Type.Optional(Type.String()), text: Type.Optional(Type.String()), placeholder: Type.Optional(Type.String()), test_id: Type.Optional(Type.String()),
     css: Type.Optional(Type.String({ description: "Browser pages only." })),
-    exact: Type.Optional(Type.Boolean({ description: "Match name and text exactly instead of as a case-insensitive substring." })),
-    frames: Type.Optional(Type.Array(Type.String(), { maxItems: 8, description: "Browser pages only: CSS selectors of the nested iframes, outermost first." })),
+    exact: Type.Optional(Type.Boolean({ description: "Exact match; default case-insensitive substring." })),
+    frames: Type.Optional(Type.Array(Type.String(), { maxItems: 8, description: "Page iframe CSS selectors, outermost first." })),
   }, { additionalProperties: false }),
 ], { description });
 
 const waitParameters = Type.Object({
-  window: Type.String({ description: "Window address from {search}, {read} or a name; a browser window checks its active tab." }),
+  window: Type.String({ description: "Window ref/name; browser checks active tab." }),
   conditions: Type.Array(Type.Object({
     target: Type.Optional(targetSchema("The element the check applies to; omit for aria on the whole window or page, and for url_contains and title.")),
     is: Type.Optional(StringEnum(["exists", "absent", "visible", "hidden", "enabled", "disabled", "selected", "checked", "unchecked", "focused"] as const, { description: "State the target is in." })),
-    value: Type.Optional(Type.String({ description: "The target's value (its name if it has none, or a page element's text) equals this." })),
-    contains: Type.Optional(Type.String({ description: "The target's value, name or text contains this." })),
-    count: Type.Optional(Type.Integer({ minimum: 0, maximum: 10000, description: "Exactly this many elements match the target." })),
-    aria: Type.Optional(Type.String({ description: "Playwright aria snapshot template the target's subtree, or the whole window or page, contains, such as - button /Count \\d+/." })),
-    url_contains: Type.Optional(Type.String({ description: "Browser windows: the active tab's URL contains this." })),
-    title: Type.Optional(Type.String({ description: "Browser windows: the active tab's title equals this." })),
-  }, { additionalProperties: false }), { minItems: 1, maxItems: 16, description: "Every condition must hold. Each takes one check: is, value, contains, count or aria with a target, aria alone, or url_contains or title alone." }),
-  mode: Type.Optional(StringEnum(["wait", "check"] as const, { description: "wait (default) samples until every condition holds or timeout_ms passes; check takes one sample." })),
-  timeout_ms: Type.Optional(Type.Integer({ minimum: 0, maximum: 60000, description: "wait: longest wait, default 5000." })),
-  interval_ms: Type.Optional(Type.Integer({ minimum: 50, maximum: 5000, description: "wait: time between samples, default 250." })),
-  stable: Type.Optional(Type.Integer({ minimum: 1, maximum: 10, description: "wait: consecutive satisfied samples required, default 1." })),
+    value: Type.Optional(Type.String({ description: "Exact value/name/text." })),
+    contains: Type.Optional(Type.String({ description: "Value/name/text contains." })),
+    count: Type.Optional(Type.Integer({ minimum: 0, maximum: 10000, description: "Exact matching element count." })),
+    aria: Type.Optional(Type.String({ description: "ARIA snapshot template (target subtree or whole page)." })),
+    url_contains: Type.Optional(Type.String({ description: "Active tab URL contains." })),
+    title: Type.Optional(Type.String({ description: "Active tab title equals." })),
+  }, { additionalProperties: false }), { minItems: 1, maxItems: 16, description: "All conditions must hold. One check per condition; url_contains/title and whole-page aria need no target." }),
+  mode: Type.Optional(StringEnum(["wait", "check"] as const, { description: "wait (default) polls; check samples once (no timing fields)." })),
+  timeout_ms: Type.Optional(Type.Integer({ minimum: 0, maximum: 60000, description: "Wait max ms; default 5000." })),
+  interval_ms: Type.Optional(Type.Integer({ minimum: 50, maximum: 5000, description: "Poll interval ms; default 250." })),
+  stable: Type.Optional(Type.Integer({ minimum: 1, maximum: 10, description: "Consecutive matches; default 1." })),
 }, { additionalProperties: false });
 
 /** The wait_for or verify command of computer_wait. */
@@ -147,28 +147,23 @@ export function waitCommand(params: Static<typeof waitParameters>): Record<strin
 }
 
 const browserParameters = Type.Object({
-  window: Type.String({ description: "Window address of a browser opened with computer_open or attached to it." }),
+  window: Type.String({ description: "Opened/attached browser window." }),
   action: StringEnum(["navigate", "back", "forward", "reload", "wait_load", "new_tab", "switch_tab", "close_tab", "dialog", "upload", "wait_download", "cancel_download", "evaluate"] as const, { description: [
-    "What to do in the active tab:",
-    "navigate, back, forward, reload — go to url or through history.",
-    "wait_load — wait for a load state.",
-    "new_tab, switch_tab, close_tab — tabs; a new tab becomes active.",
-    "dialog — answer the open JavaScript dialog.",
-    "upload — put files into a file input.",
-    "wait_download, cancel_download — downloads.",
-    "evaluate — run JavaScript in the page.",
+    "navigate/back/forward/reload: navigation; wait_load: load state.",
+    "new_tab/switch_tab/close_tab: tabs (new becomes active); dialog: JS prompt.",
+    "upload: file input; wait_download/cancel_download: downloads; evaluate: page JS.",
   ].join("\n") }),
-  url: Type.Optional(Type.String({ description: "navigate and new_tab: an http(s) URL." })),
-  tab: Type.Optional(Type.String({ description: "switch_tab and close_tab: a tab id such as t2 from the snapshot's tab list; close_tab defaults to the active tab." })),
-  state: Type.Optional(StringEnum(["load", "domcontentloaded", "networkidle"] as const, { description: "wait_load: load state to reach, default load." })),
-  accept: Type.Optional(Type.Boolean({ description: "dialog: accept (true) or dismiss (false)." })),
-  text: Type.Optional(Type.String({ description: "dialog: the answer to an accepted prompt." })),
+  url: Type.Optional(Type.String({ description: "URL for navigate/new_tab." })),
+  tab: Type.Optional(Type.String({ description: "Tab ID (t2) for switch/close; close defaults active." })),
+  state: Type.Optional(StringEnum(["load", "domcontentloaded", "networkidle"] as const, { description: "wait_load state; default load." })),
+  accept: Type.Optional(Type.Boolean({ description: "Dialog: true accept, false dismiss." })),
+  text: Type.Optional(Type.String({ description: "Prompt response when accepted." })),
   target: Type.Optional(targetSchema("upload: the file input, or with chooser the element that opens the file chooser; evaluate: the element passed to a function expression.")),
-  files: Type.Optional(Type.Array(Type.String(), { minItems: 1, maxItems: 32, description: "upload: absolute WSL or Windows paths of existing files." })),
-  chooser: Type.Optional(Type.Boolean({ description: "upload: click target and fill the file chooser it opens; no native dialog appears." })),
-  download: Type.Optional(Type.String({ description: "wait_download and cancel_download: a download id such as d1; defaults to the latest." })),
-  expression: Type.Optional(Type.String({ description: "evaluate: JavaScript; a function expression is called with the target element. Promises are awaited." })),
-  timeout_ms: Type.Optional(Type.Integer({ minimum: 1, maximum: 60000, description: "Time limit; default 5000 for switch_tab, close_tab, dialog and cancel_download, 30000 otherwise." })),
+  files: Type.Optional(Type.Array(Type.String(), { minItems: 1, maxItems: 32, description: "upload: absolute paths to existing files." })),
+  chooser: Type.Optional(Type.Boolean({ description: "upload: use chooser trigger instead of file input." })),
+  download: Type.Optional(Type.String({ description: "Download ID (d1); default latest." })),
+  expression: Type.Optional(Type.String({ description: "evaluate: JS or function(target); awaits promises." })),
+  timeout_ms: Type.Optional(Type.Integer({ minimum: 1, maximum: 60000, description: "Timeout ms: default 5000 for tab/dialog/cancel, else 30000." })),
 }, { additionalProperties: false });
 
 const machineSchema = Type.String({ description: "computer:machine/<name>; computer:machine/local is this machine." });
@@ -191,14 +186,12 @@ function fieldsFor(action: string, fields: Record<string, unknown>, allowed: str
 const filesParameters = Type.Object({
   machine: machineSchema,
   action: StringEnum(["put", "get", "list"] as const, { description: [
-    "put — copy a workspace file into the folder.",
-    "get — copy a file from the folder into the workspace.",
-    "list — the folder's Windows path and files.",
-    "The folder is removed when the computer session closes.",
+    "put: workspace -> session; get: session -> workspace; list: session files/path.",
+    "Session folder is temporary.",
   ].join("\n") }),
-  from: Type.Optional(Type.String({ description: "put: workspace file path." })),
-  name: Type.Optional(Type.String({ description: "put: file name in the folder, default the name of from; get: the file to copy out." })),
-  to: Type.Optional(Type.String({ description: "get: workspace path to write." })),
+  from: Type.Optional(Type.String({ description: "put source in workspace." })),
+  name: Type.Optional(Type.String({ description: "put: destination name (defaults from); get: source name." })),
+  to: Type.Optional(Type.String({ description: "get destination in workspace." })),
 }, { additionalProperties: false });
 
 /** The machine command of computer_files. */
@@ -213,9 +206,9 @@ export function filesCommand(params: Static<typeof filesParameters>): Record<str
 const clipboardParameters = Type.Object({
   machine: machineSchema,
   action: StringEnum(["read", "write"] as const, { description: "read — its formats and text.\nwrite — replace it with text or an image." }),
-  include_image: Type.Optional(Type.Boolean({ description: "read: also return the clipboard's image as PNG." })),
-  text: Type.Optional(Type.String({ description: "write: the text to put on the clipboard." })),
-  image: Type.Optional(Type.String({ description: "write: workspace path of an image file to put on the clipboard instead of text." })),
+  include_image: Type.Optional(Type.Boolean({ description: "read: include PNG." })),
+  text: Type.Optional(Type.String({ description: "write: text." })),
+  image: Type.Optional(Type.String({ description: "write: image workspace path." })),
 }, { additionalProperties: false });
 
 /** The machine command of computer_clipboard. */
@@ -231,27 +224,24 @@ export function clipboardCommand(params: Static<typeof clipboardParameters>): Re
 }
 
 const recordParameters = Type.Object({
-  at: Type.String({ description: "video_start, video_stop and audio: computer:machine/<name>; sequence: a window or display address; watch: a window or viewport address; watch_stop: the sequence address watch returned." }),
+  at: Type.String({ description: "video/audio: machine; sequence: window/display; watch: window/view; watch_stop: returned sequence." }),
   action: StringEnum(["video_start", "video_stop", "audio", "sequence", "watch", "watch_stop"] as const, { description: [
-    "video_start — record the machine's main display to video until video_stop or seconds pass.",
-    "video_stop — end the video.",
-    "audio — record the machine's playback for seconds.",
-    "sequence — capture frames of a window or display over duration_ms; {read} shows them with a frames: view.",
-    "watch — capture a window or viewport in the background while acting on it; returns at once.",
-    "watch_stop — end a watch and get its frames with the actions marked.",
+    "video_start/stop: screen recording; audio: playback recording.",
+    "sequence: timed window/display frames ({read} frames:); watch: background frames.",
+    "watch_stop: end watch and return marked frames.",
   ].join("\n") }),
-  seconds: Type.Optional(Type.Integer({ minimum: 1, maximum: 600, description: "video_start: recording limit, 1..600; audio: recording length, 1..300." })),
-  to: Type.Optional(Type.String({ description: "video_stop and audio: workspace path to fetch the recorded file into; watch_stop: workspace folder for the frames, default a temporary folder removed when the computer session closes." })),
-  transcribe: Type.Optional(Type.Boolean({ description: "audio: add a speech transcript; it can be wrong." })),
-  video: Type.Optional(Type.Boolean({ description: "watch_stop: also write watch.webp, an animation of the frames in real time." })),
+  seconds: Type.Optional(Type.Integer({ minimum: 1, maximum: 600, description: "video_start: seconds (1–600); audio: 1–300." })),
+  to: Type.Optional(Type.String({ description: "video_stop/audio: output file; watch_stop: frame folder (default temp)." })),
+  transcribe: Type.Optional(Type.Boolean({ description: "audio: speech transcript (fallible)." })),
+  video: Type.Optional(Type.Boolean({ description: "watch_stop: also save watch.webp." })),
   duration_ms: Type.Optional(Type.Integer({ minimum: 1, maximum: 60000, description: "sequence: capture length." })),
-  fps: Type.Optional(Type.Integer({ minimum: 1, maximum: 30, description: "sequence and watch: frames per second to aim for, default 4 for sequence and 10 for watch." })),
+  fps: Type.Optional(Type.Integer({ minimum: 1, maximum: 30, description: "sequence/watch FPS; default 4/10." })),
   max_frames: Type.Optional(Type.Integer({ minimum: 1, maximum: 300, description: "sequence: frame limit, default 40." })),
-  timeout_ms: Type.Optional(Type.Integer({ minimum: 1, maximum: 300000, description: "sequence: total time limit, at least duration_ms, at most 90000, default 15000; watch: when the watch stops by itself, default 60000." })),
-  maxLongEdge: Type.Optional(Type.Integer({ minimum: 64, maximum: 4096, description: "sequence and watch: longest frame edge in pixels; default 800 for watch." })),
-  scale: Type.Optional(Type.Number({ minimum: 0.05, maximum: 1, description: "sequence: frame scale instead of maxLongEdge." })),
+  timeout_ms: Type.Optional(Type.Integer({ minimum: 1, maximum: 300000, description: "sequence timeout ms >=duration_ms, <=90000, default 15000; watch default 60000." })),
+  maxLongEdge: Type.Optional(Type.Integer({ minimum: 64, maximum: 4096, description: "Max frame edge px; watch default 800." })),
+  scale: Type.Optional(Type.Number({ minimum: 0.05, maximum: 1, description: "sequence: scale instead of maxLongEdge." })),
   region: Type.Optional(Type.Object({ x: Type.Integer({ minimum: 0 }), y: Type.Integer({ minimum: 0 }), width: Type.Integer({ minimum: 1 }), height: Type.Integer({ minimum: 1 }) },
-    { additionalProperties: false, description: "sequence: part of the window or display to capture, in its local pixels." })),
+    { additionalProperties: false, description: "sequence region in local px." })),
 }, { additionalProperties: false });
 
 const SEQUENCE_FIELDS = ["duration_ms", "fps", "max_frames", "timeout_ms", "maxLongEdge", "scale", "region"];
@@ -557,7 +547,7 @@ export function registerComputerTools(pi: ExtensionAPI, resources: ComputerResou
   });
   pi.registerTool({
     ...common, name: "computer_wait", label: "Computer wait",
-    description: "Use computer_wait to wait until a window's UI or a browser page meets conditions, or to check them once, without sending input.",
+    description: "Wait for UI conditions or check once; no input.",
     parameters: fillToolNames(waitParameters, names),
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     ...rendered("computer_wait"),
@@ -573,7 +563,7 @@ export function registerComputerTools(pi: ExtensionAPI, resources: ComputerResou
   });
   pi.registerTool({
     ...common, name: "computer_browser", label: "Computer browser",
-    description: "Use computer_browser to navigate, manage tabs, answer JavaScript dialogs, upload or download files, and run page JavaScript in a browser window.",
+    description: "Navigate, manage browser tabs/dialogs/files, evaluate JS.",
     parameters: fillToolNames(browserParameters, names),
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     ...rendered("computer_browser"),
@@ -599,7 +589,7 @@ export function registerComputerTools(pi: ExtensionAPI, resources: ComputerResou
   });
   pi.registerTool({
     ...common, name: "computer_clipboard", label: "Computer clipboard",
-    description: "Use computer_clipboard to read or replace a machine's clipboard, with text or an image.",
+    description: "Read/write clipboard text or image.",
     parameters: fillToolNames(clipboardParameters, names),
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     ...rendered("computer_clipboard"),
@@ -715,7 +705,7 @@ export function registerComputerTools(pi: ExtensionAPI, resources: ComputerResou
 export function registerComputerDelete(pi: ExtensionAPI, resources: ComputerResources): void {
   pi.registerTool({
     name: "computer_delete", label: "Computer delete", exposure: "deferred", namespace: computerNamespace(), outputSchema: receiptSchema,
-    description: "Use computer_delete to close an app window, or to release a sandbox, isolated session, machine or all of computer use.",
+    description: "Close windows or release computer resources.",
     parameters: Type.Object({ path: Type.String({ description: COMPUTER_DELETE_HELP }) }, { additionalProperties: false }),
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     ...resourceRenderers("computer_delete", resource => resources.describe(resource)),
