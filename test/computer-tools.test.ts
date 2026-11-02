@@ -15,25 +15,22 @@ const cwd = "/synthetic-computer-tools";
 const at = (source: string) => requireComputerAddress(source);
 
 // LPT-934: each typed tool turns its fields into exactly one existing command.
-test("computer_open opens one thing, chosen by its fields and the address", () => {
+test("computer_open opens native apps or isolated desktops and rejects browser automation", () => {
   const machine = at("computer:machine/lab");
   expect(openCommand(machine, { at: "", app: "Notepad" })).toEqual({ action: "open", app: "Notepad" });
-  expect(openCommand(machine, { at: "", path: "C:\\Tools\\app.exe", args: ["--x"], debugging: true })).toEqual({ action: "open", path: "C:\\Tools\\app.exe", args: ["--x"], debugging: true });
-  expect(openCommand(machine, { at: "", url: "https://example.com" })).toEqual({ action: "open_browser", url: "https://example.com" });
-  expect(openCommand(machine, { at: "", browser: "msedge", profile: "agent" })).toEqual({ action: "open_browser", browser: "msedge", profile: "agent" });
+  expect(openCommand(machine, { at: "", path: "C:\\Tools\\app.exe", args: ["--x"] }))
+    .toEqual({ action: "open", path: "C:\\Tools\\app.exe", args: ["--x"] });
   expect(openCommand(machine, { at: "", sandbox: { export: "C:\\out" } })).toEqual({ action: "open_sandbox", export: "C:\\out" });
   expect(openCommand(machine, { at: "", isolated_session: true })).toEqual({ action: "open_session" });
-  expect(openCommand(machine, { at: "", webview2_debugging: { app: "ms-teams.exe", enabled: true } })).toEqual({ action: "webview2_debugging", app: "ms-teams.exe", enabled: true });
-  expect(() => openCommand(machine, { at: "", path: "C:\\app.exe", webview2_debugging: { app: "app.exe", enabled: true } })).toThrow("path and webview2_debugging");
   expect(openCommand(at("computer:app/a1"), { at: "" })).toEqual({ action: "open" });
-  expect(openCommand(at("computer:window/w1"), { at: "" })).toEqual({ action: "attach_browser" });
   expect(openCommand(at("computer:sandbox/s1"), { at: "", app: "Notepad" })).toEqual({ action: "open", app: "Notepad" });
-  expect(() => openCommand(machine, { at: "", app: "Notepad", url: "https://example.com" })).toThrow("Open one thing at a time: app and browser");
-  expect(() => openCommand(machine, { at: "", app: "Notepad", args: ["x"] })).toThrow("args and debugging go with path");
+  expect(() => openCommand(at("computer:window/w1"), { at: "" })).toThrow("Browser attachment is disabled");
+  expect(() => openCommand(machine, { at: "", app: "Notepad", path: "C:\\app.exe" })).toThrow("Open one thing at a time");
+  expect(() => openCommand(machine, { at: "", app: "Notepad", args: ["x"] })).toThrow("args requires path");
   expect(() => openCommand(machine, { at: "" })).toThrow("Name what to open");
-  expect(() => openCommand(at("computer:window/w1"), { at: "", app: "Notepad" })).toThrow("A window address attaches Playwright");
-  expect(() => openCommand(at("computer:sandbox/s1"), { at: "", url: "https://example.com" })).toThrow("A sandbox opens apps by app or path");
+  expect(() => openCommand(machine, { at: "", url: "https://example.com" } as never)).toThrow("Name what to open");
   expect(() => openCommand(at("computer:machine/lab/windows"), { at: "", app: "Notepad" })).toThrow("Open at computer:machine/<name>");
+  expect(() => openCommand(at("computer:sandbox/s1"), { at: "", isolated_session: true })).toThrow("A sandbox opens apps by app or path");
 });
 
 test("computer_window takes exactly the fields of its action", () => {
