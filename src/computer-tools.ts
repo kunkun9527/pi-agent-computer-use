@@ -48,6 +48,13 @@ const openParameters = Type.Object({
   }, { additionalProperties: false, description: "Configure WebView2 debugging (no launch); may need approval." })),
 }, { additionalProperties: false });
 
+/** Public computer_open supports native apps and isolated desktops only. */
+const desktopOpenParameters = Type.Object({
+  at: openParameters.properties.at, app: openParameters.properties.app,
+  path: openParameters.properties.path, args: openParameters.properties.args,
+  sandbox: openParameters.properties.sandbox, isolated_session: openParameters.properties.isolated_session,
+}, { additionalProperties: false });
+
 /** The command that opens what computer_open asks for at this address. */
 export function openCommand(address: ComputerAddress, params: Static<typeof openParameters>): Record<string, unknown> {
   const { app, path, args, debugging, browser, url, profile, sandbox, isolated_session, webview2_debugging } = params;
@@ -145,26 +152,6 @@ export function waitCommand(params: Static<typeof waitParameters>): Record<strin
   if (mode === "check" && Object.keys(timing).length) throw new ComputerRequestError(`check takes one sample, so ${Object.keys(timing).join(", ")} do not apply.`);
   return { action: mode === "check" ? "verify" : "wait_for", conditions, ...timing };
 }
-
-const browserParameters = Type.Object({
-  window: Type.String({ description: "Opened/attached browser window." }),
-  action: StringEnum(["navigate", "back", "forward", "reload", "wait_load", "new_tab", "switch_tab", "close_tab", "dialog", "upload", "wait_download", "cancel_download", "evaluate"] as const, { description: [
-    "navigate/back/forward/reload: navigation; wait_load: load state.",
-    "new_tab/switch_tab/close_tab: tabs (new becomes active); dialog: JS prompt.",
-    "upload: file input; wait_download/cancel_download: downloads; evaluate: page JS.",
-  ].join("\n") }),
-  url: Type.Optional(Type.String({ description: "URL for navigate/new_tab." })),
-  tab: Type.Optional(Type.String({ description: "Tab ID (t2) for switch/close; close defaults active." })),
-  state: Type.Optional(StringEnum(["load", "domcontentloaded", "networkidle"] as const, { description: "wait_load state; default load." })),
-  accept: Type.Optional(Type.Boolean({ description: "Dialog: true accept, false dismiss." })),
-  text: Type.Optional(Type.String({ description: "Prompt response when accepted." })),
-  target: Type.Optional(targetSchema("upload: the file input, or with chooser the element that opens the file chooser; evaluate: the element passed to a function expression.")),
-  files: Type.Optional(Type.Array(Type.String(), { minItems: 1, maxItems: 32, description: "upload: absolute paths to existing files." })),
-  chooser: Type.Optional(Type.Boolean({ description: "upload: use chooser trigger instead of file input." })),
-  download: Type.Optional(Type.String({ description: "Download ID (d1); default latest." })),
-  expression: Type.Optional(Type.String({ description: "evaluate: JS or function(target); awaits promises." })),
-  timeout_ms: Type.Optional(Type.Integer({ minimum: 1, maximum: 60000, description: "Timeout ms: default 5000 for tab/dialog/cancel, else 30000." })),
-}, { additionalProperties: false });
 
 const machineSchema = Type.String({ description: "computer:machine/<name>; computer:machine/local is this machine." });
 
@@ -280,7 +267,7 @@ export function recordCommand(params: Static<typeof recordParameters>): RecordRu
 }
 
 const inputWindow = Type.String({ description: "Window/viewport address from {read}/{search}." });
-const inputTarget = (what: string) => Type.Optional(Type.String({ description: `${what}: ref from latest {read} (native 1:a, page e12), or Playwright locator.` }));
+const inputTarget = (what: string) => Type.Optional(Type.String({ description: `${what}: fresh UIA ref (1:a) or getByRole/getByText locator.` }));
 const coordinate = (description: string) => Type.Optional(Type.Number({ minimum: 0, description }));
 const pointX = "With y, point in latest window image pixels or browser CSS pixels. Native point input uses foreground.";
 const pointY = "With x, point instead of target.";
@@ -506,14 +493,15 @@ export function registerComputerTools(pi: ExtensionAPI, resources: ComputerResou
   const rendered = (name: string) => typedRenderers(name, describe);
   pi.registerTool({
     ...common, name: "computer_open", label: "Computer open",
-    description: "Open app/browser/sandbox/session or attach existing browser.",
-    parameters: fillToolNames(openParameters, names),
+    description: "Open native apps, Windows Sandbox or isolated sessions (no browser automation).",
+    parameters: fillToolNames(desktopOpenParameters, names),
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     ...rendered("computer_open"),
     async execute(_id, params, signal, _update, ctx) {
       let command: Record<string, unknown> = {};
       return actionResult(await computerAction(resources, params.at, "open", () => {
         const address = resources.address(params.at);
+        if (address.kind === "window") throw new ComputerRequestError("Browser attachment is disabled. Use native UIA tools or your browser extension.");
         command = openCommand(address, params);
         return address;
       }, address => resources.perform(address, ctx.cwd, JSON.stringify(command), signal)));
@@ -559,18 +547,6 @@ export function registerComputerTools(pi: ExtensionAPI, resources: ComputerResou
         if (address.kind !== "window") throw new ComputerRequestError(`computer_wait needs a window address from ${names.search}, ${names.read} or a name.`);
         return address;
       }, address => resources.perform(address, ctx.cwd, JSON.stringify(command), signal)));
-    },
-  });
-  pi.registerTool({
-    ...common, name: "computer_browser", label: "Computer browser",
-    description: "Navigate, manage browser tabs/dialogs/files, evaluate JS.",
-    parameters: fillToolNames(browserParameters, names),
-    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
-    ...rendered("computer_browser"),
-    async execute(_id, params, signal, _update, ctx) {
-      const { window, ...command } = params;
-      return actionResult(await computerAction(resources, window, params.action, () => resources.address(window),
-        address => resources.browserAction(address, ctx.cwd, command, signal)));
     },
   });
   pi.registerTool({
