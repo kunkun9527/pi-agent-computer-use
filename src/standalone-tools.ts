@@ -21,12 +21,12 @@ export function registerStandaloneTools(pi: ExtensionAPI, resources: ComputerRes
   deliverGuide(pi, guide);
   pi.registerTool({
     name: "computer_read", label: "Computer read", exposure: "deferred", namespace,
-    description: "Use computer_read to see machines, app windows, displays and browser pages through computer: addresses.",
+    description: "Read computer: resources and UI snapshots.",
     parameters: Type.Object({
       path: Type.String({ description: computerPathHelp(STANDALONE_TOOL_NAMES) }),
       views: Type.Optional(Type.Array(Type.String(), { description: computerViewsHelp(STANDALONE_TOOL_NAMES) })),
-      offset: Type.Optional(Type.Integer({ description: "First text line of a stored observation, from 1; negative counts from the end." })),
-      limit: Type.Optional(Type.Integer({ minimum: 0, description: "Maximum text lines from offset." })),
+      offset: Type.Optional(Type.Integer({ description: "First line (1-based, negative from end)." })),
+      limit: Type.Optional(Type.Integer({ minimum: 0, description: "Line count." })),
     }, { additionalProperties: false }),
     // Scripts receive an image block, or several frames, like an IDE image Read; text reads stay strings.
     outputSchema: Type.Union([
@@ -54,11 +54,11 @@ export function registerStandaloneTools(pi: ExtensionAPI, resources: ComputerRes
   });
   pi.registerTool({
     name: "computer_search", label: "Computer search", exposure: "deferred", namespace,
-    description: "Use computer_search to find windows or installed apps on a machine, or to filter the UI or page lines of an observation without reading it again.",
+    description: "Find windows/apps or search an observation.",
     parameters: Type.Object({
       path: Type.String({ description: COMPUTER_SEARCH_HELP }),
-      query: Type.String({ description: "Name or title text, or regex:<pattern> for a case-insensitive regular expression." }),
-      limit: Type.Optional(Type.Integer({ minimum: 1, description: "Maximum results." })),
+      query: Type.String({ description: "Name/text or regex:<pattern>." }),
+      limit: Type.Optional(Type.Integer({ minimum: 1, description: "Result count." })),
     }, { additionalProperties: false }),
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     ...resourceRenderers("computer_search", describe),
