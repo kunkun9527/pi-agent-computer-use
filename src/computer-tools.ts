@@ -14,7 +14,7 @@ type Action = Awaited<ReturnType<typeof computerAction>>;
  * read of a computer address in both modes, and tool_search would index instructions into every tool's search text.
  */
 export function computerNamespace() {
-  return { name: "computer", description: "Read and operate Windows app windows, displays and browser pages through computer: addresses" };
+  return { name: "computer", description: "Read/control native Windows windows and displays using UIA, screenshots and input" };
 }
 /** Codemode scripts receive the receipt object for every outcome, so they branch on outcome without try/catch. */
 export const receiptSchema = Type.Object({ outcome: Type.String(), effect: Type.String() }, { additionalProperties: true });
@@ -99,31 +99,27 @@ const displayParameters = Type.Object({
   height: Type.Integer({ minimum: 480, maximum: 16384, description: "Height in physical px." }),
 }, { additionalProperties: false });
 
-/** An element of a window or page: a Playwright locator string, or locator fields that must all match. */
+/** Native UIA wait target: a locator string or matching accessibility properties. */
 const targetSchema = (description: string) => Type.Union([
-  Type.String({ description: "Playwright locator, e.g. getByRole('button',{name:'Save'})." }),
+  Type.String({ description: "UIA locator, e.g. getByRole('button',{name:'Save'})." }),
   Type.Object({
-    ref: Type.Optional(Type.String({ description: "Page ref (e12) from latest snapshot; use alone." })),
+    ref: Type.Optional(Type.String({ description: "Native ref from latest UI observation." })),
     role: Type.Optional(Type.String()), name: Type.Optional(Type.String({ description: "Accessible name; needs role." })),
     label: Type.Optional(Type.String()), text: Type.Optional(Type.String()), placeholder: Type.Optional(Type.String()), test_id: Type.Optional(Type.String()),
-    css: Type.Optional(Type.String({ description: "Browser pages only." })),
     exact: Type.Optional(Type.Boolean({ description: "Exact match; default case-insensitive substring." })),
-    frames: Type.Optional(Type.Array(Type.String(), { maxItems: 8, description: "Page iframe CSS selectors, outermost first." })),
   }, { additionalProperties: false }),
 ], { description });
 
 const waitParameters = Type.Object({
-  window: Type.String({ description: "Window ref/name; browser checks active tab." }),
+  window: Type.String({ description: "Native window ref/name." }),
   conditions: Type.Array(Type.Object({
     target: Type.Optional(targetSchema("The element the check applies to; omit for aria on the whole window or page, and for url_contains and title.")),
     is: Type.Optional(StringEnum(["exists", "absent", "visible", "hidden", "enabled", "disabled", "selected", "checked", "unchecked", "focused"] as const, { description: "State the target is in." })),
     value: Type.Optional(Type.String({ description: "Exact value/name/text." })),
     contains: Type.Optional(Type.String({ description: "Value/name/text contains." })),
     count: Type.Optional(Type.Integer({ minimum: 0, maximum: 10000, description: "Exact matching element count." })),
-    aria: Type.Optional(Type.String({ description: "ARIA snapshot template (target subtree or whole page)." })),
-    url_contains: Type.Optional(Type.String({ description: "Active tab URL contains." })),
-    title: Type.Optional(Type.String({ description: "Active tab title equals." })),
-  }, { additionalProperties: false }), { minItems: 1, maxItems: 16, description: "All conditions must hold. One check per condition; url_contains/title and whole-page aria need no target." }),
+    aria: Type.Optional(Type.String({ description: "ARIA snapshot template (target subtree or whole window)." })),
+          }, { additionalProperties: false }), { minItems: 1, maxItems: 16, description: "All conditions must hold. One check per condition; whole-window aria needs no target." }),
   mode: Type.Optional(StringEnum(["wait", "check"] as const, { description: "wait (default) polls; check samples once (no timing fields)." })),
   timeout_ms: Type.Optional(Type.Integer({ minimum: 0, maximum: 60000, description: "Wait max ms; default 5000." })),
   interval_ms: Type.Optional(Type.Integer({ minimum: 50, maximum: 5000, description: "Poll interval ms; default 250." })),
