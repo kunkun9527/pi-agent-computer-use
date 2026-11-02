@@ -591,56 +591,56 @@ export function registerComputerTools(pi: ExtensionAPI, resources: ComputerResou
   pi.registerTool({
     ...common, name: "computer_click", label: "Computer click",
     description: "Click a UI target or point.",
-    parameters: fillToolNames(clickParameters, names), annotations: inputAnnotations,
+    parameters: fillToolNames(Type.Omit(clickParameters, ["space"]), names), annotations: inputAnnotations,
     ...rendered("computer_click"),
     async execute(_id, params, signal, _update, ctx) { return input(params.window, "click", () => clickPlan(params), ctx.cwd, signal); },
   });
   pi.registerTool({
     ...common, name: "computer_hover", label: "Computer hover",
     description: "Hover over target or point.",
-    parameters: fillToolNames(hoverParameters, names), annotations: inputAnnotations,
+    parameters: fillToolNames(Type.Omit(hoverParameters, ["space"]), names), annotations: inputAnnotations,
     ...rendered("computer_hover"),
     async execute(_id, params, signal, _update, ctx) { return input(params.window, "hover", () => hoverPlan(params), ctx.cwd, signal); },
   });
   pi.registerTool({
     ...common, name: "computer_drag", label: "Computer drag",
     description: "Drag between points/targets, optionally via path.",
-    parameters: fillToolNames(dragParameters, names), annotations: inputAnnotations,
+    parameters: fillToolNames(Type.Omit(dragParameters, ["space"]), names), annotations: inputAnnotations,
     ...rendered("computer_drag"),
     async execute(_id, params, signal, _update, ctx) { return input(params.window, "drag", () => dragPlan(params), ctx.cwd, signal); },
   });
   pi.registerTool({
     ...common, name: "computer_scroll", label: "Computer scroll",
     description: "Scroll target, point or window/page.",
-    parameters: fillToolNames(scrollParameters, names), annotations: inputAnnotations,
+    parameters: fillToolNames(Type.Omit(scrollParameters, ["space"]), names), annotations: inputAnnotations,
     ...rendered("computer_scroll"),
     async execute(_id, params, signal, _update, ctx) { return input(params.window, "scroll", () => scrollPlan(params), ctx.cwd, signal); },
   });
   pi.registerTool({
     ...common, name: "computer_type", label: "Computer type",
     description: "Type or replace field text.",
-    parameters: fillToolNames(typeParameters, names), annotations: inputAnnotations,
+    parameters: fillToolNames(Type.Omit(typeParameters, ["space"]), names), annotations: inputAnnotations,
     ...rendered("computer_type"),
     async execute(_id, params, signal, _update, ctx) { return input(params.window, "type", () => typePlan(params), ctx.cwd, signal); },
   });
   pi.registerTool({
     ...common, name: "computer_press", label: "Computer press",
     description: "Press a key/chord or hold keys.",
-    parameters: fillToolNames(pressParameters, names), annotations: inputAnnotations,
+    parameters: fillToolNames(Type.Omit(pressParameters, ["space"]), names), annotations: inputAnnotations,
     ...rendered("computer_press"),
     async execute(_id, params, signal, _update, ctx) { return input(params.window, "press", () => pressPlan(params), ctx.cwd, signal); },
   });
   pi.registerTool({
     ...common, name: "computer_select", label: "Computer select",
     description: "Select options, toggle controls or open a menu.",
-    parameters: fillToolNames(selectParameters, names), annotations: inputAnnotations,
+    parameters: fillToolNames(Type.Omit(selectParameters, ["space"]), names), annotations: inputAnnotations,
     ...rendered("computer_select"),
     async execute(_id, params, signal, _update, ctx) { return input(params.window, "select", () => selectPlan(params), ctx.cwd, signal); },
   });
   pi.registerTool({
     ...common, name: "computer_timeline", label: "Computer timeline",
     description: "Run timed key/pointer/wheel/pen events.",
-    parameters: fillToolNames(timelineParameters, names), annotations: inputAnnotations,
+    parameters: fillToolNames(Type.Omit(timelineParameters, ["space"]), names), annotations: inputAnnotations,
     ...rendered("computer_timeline"),
     async execute(_id, params, signal, _update, ctx) { return input(params.window, "timeline", () => timelinePlan(params), ctx.cwd, signal); },
   });
