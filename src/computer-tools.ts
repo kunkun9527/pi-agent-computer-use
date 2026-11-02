@@ -28,55 +28,39 @@ export function actionResult(action: Action) {
 }
 
 const openParameters = Type.Object({
-  at: Type.String({ description: "Machine/sandbox to launch into, app address to open, or browser window to attach." }),
+  at: Type.String({ description: "Machine/sandbox address to launch into, or installed app ref; no browser attachment." }),
   app: Type.Optional(Type.String({ description: "App name from {search} of machine /apps." })),
   path: Type.Optional(Type.String({ description: "Absolute Windows .exe path." })),
   args: Type.Optional(Type.Array(Type.String(), { maxItems: 32, description: "Arguments for path." })),
-  debugging: Type.Optional(Type.Boolean({ description: "Enable WebView2 debugging when starting path." })),
-  browser: Type.Optional(StringEnum(["chrome", "msedge", "firefox"] as const, { description: "Launch Playwright browser for DOM/page actions." })),
-  url: Type.Optional(Type.String({ description: "Initial http(s) page." })),
-  profile: Type.Optional(Type.Literal("agent", { description: "agent: persistent login profile; omit for disposable." })),
   sandbox: Type.Optional(Type.Object({
     import: Type.Optional(Type.Array(Type.Union([Type.String(), Type.Object({ host: Type.String(), guest: Type.Optional(Type.String()), writable: Type.Optional(Type.Boolean()) }, { additionalProperties: false })]),
       { maxItems: 8, description: "Shared folders; read-only unless writable." })),
     export: Type.Optional(Type.String({ description: "Writable host output folder." })),
   }, { additionalProperties: false, description: "Disposable Windows Sandbox; {} for no shares." })),
   isolated_session: Type.Optional(Type.Boolean({ description: "Separate Windows desktop/session." })),
-  webview2_debugging: Type.Optional(Type.Object({
-    app: Type.String({ description: "Executable name, e.g. ms-teams.exe." }),
-    enabled: Type.Boolean({ description: "Enable on next launch; false disables." }),
-  }, { additionalProperties: false, description: "Configure WebView2 debugging (no launch); may need approval." })),
 }, { additionalProperties: false });
 
-/** Public computer_open supports native apps and isolated desktops only. */
-const desktopOpenParameters = Type.Object({
-  at: openParameters.properties.at, app: openParameters.properties.app,
-  path: openParameters.properties.path, args: openParameters.properties.args,
-  sandbox: openParameters.properties.sandbox, isolated_session: openParameters.properties.isolated_session,
-}, { additionalProperties: false });
-
-/** The command that opens what computer_open asks for at this address. */
+/** Open a native app, Windows Sandbox or isolated desktop. Browser automation is disabled. */
 export function openCommand(address: ComputerAddress, params: Static<typeof openParameters>): Record<string, unknown> {
-  const { app, path, args, debugging, browser, url, profile, sandbox, isolated_session, webview2_debugging } = params;
-  const chosen = [app !== undefined && "app", path !== undefined && "path", (browser ?? url ?? profile) !== undefined && "browser",
-    sandbox !== undefined && "sandbox", isolated_session === true && "isolated_session", webview2_debugging !== undefined && "webview2_debugging"].filter(Boolean);
+  const { app, path, args, sandbox, isolated_session } = params;
+  const chosen = [app !== undefined && "app", path !== undefined && "path",
+    sandbox !== undefined && "sandbox", isolated_session === true && "isolated_session"].filter(Boolean);
   if (chosen.length > 1) throw new ComputerRequestError(`Open one thing at a time: ${chosen.join(" and ")} were both given.`);
-  if ((args !== undefined || debugging !== undefined) && path === undefined) throw new ComputerRequestError("args and debugging go with path.");
+  if (args !== undefined && path === undefined) throw new ComputerRequestError("args requires path.");
   const what = chosen[0];
-  if (address.kind === "app" || address.kind === "window") {
-    if (what) throw new ComputerRequestError(`${address.kind === "app" ? "An app address opens that app" : "A window address attaches Playwright to that browser"}; give a machine address to open ${what}.`);
-    return { action: address.kind === "app" ? "open" : "attach_browser" };
+  if (address.kind === "window") throw new ComputerRequestError("Browser attachment is disabled; use native window UIA or a browser extension.");
+  if (address.kind === "app") {
+    if (what) throw new ComputerRequestError("An app address opens that app; give a machine address to open another thing.");
+    return { action: "open" };
   }
-  if (address.kind !== "machine" && address.kind !== "sandbox" || address.kind === "machine" && address.part)
-    throw new ComputerRequestError("Open at computer:machine/<name>, a sandbox address, an app address or a browser window address.");
+  if ((address.kind !== "machine" && address.kind !== "sandbox") || (address.kind === "machine" && address.part))
+    throw new ComputerRequestError("Open at computer:machine/<name>, a sandbox address or an app address.");
   if (what === "app") return { action: "open", app };
-  if (what === "path") return { action: "open", path, ...(args ? { args } : {}), ...(debugging !== undefined ? { debugging } : {}) };
+  if (what === "path") return { action: "open", path, ...(args ? { args } : {}) };
   if (address.kind === "sandbox" && what) throw new ComputerRequestError("A sandbox opens apps by app or path.");
-  if (what === "browser") return { action: "open_browser", ...(browser ? { browser } : {}), ...(url ? { url } : {}), ...(profile ? { profile } : {}) };
   if (what === "sandbox") return { action: "open_sandbox", ...sandbox };
   if (what === "isolated_session") return { action: "open_session" };
-  if (what === "webview2_debugging") return { action: "webview2_debugging", ...webview2_debugging };
-  throw new ComputerRequestError("Name what to open: app, path, browser or url, sandbox, isolated_session or webview2_debugging.");
+  throw new ComputerRequestError("Name what to open: app, path, sandbox or isolated_session.");
 }
 
 const windowParameters = Type.Object({
@@ -494,7 +478,7 @@ export function registerComputerTools(pi: ExtensionAPI, resources: ComputerResou
   pi.registerTool({
     ...common, name: "computer_open", label: "Computer open",
     description: "Open native apps, Windows Sandbox or isolated sessions (no browser automation).",
-    parameters: fillToolNames(desktopOpenParameters, names),
+    parameters: fillToolNames(openParameters, names),
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     ...rendered("computer_open"),
     async execute(_id, params, signal, _update, ctx) {
