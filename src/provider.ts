@@ -29,7 +29,7 @@ export const computerPathHelp = (names: ComputerToolNames) => [
   "computer:session — current resources. Use fresh refs; docs:computer explains more.",
 ].join("\n");
 export const computerViewsHelp = (names: ComputerToolNames) => [
-  "Window: full (default), image, ui, aria, changes; state alone; browser: dom[:{target,depth,boxes,log}] alone.",
+  "Window: full (default), image, ui, aria, changes; state alone. No browser DOM.",
   "Extras: ocr, regions, element:inspect|scope|highlight|crop|text,<ref>, region:x,y,w,h.",
   `Capture: capture:{maxLongEdge,scale,max_elements,max_depth,hints} in ${names.read}.`,
   "Frames: frames:first|last|all|endpoints|changed or frames:{indexes|from,to,as:sheet|max|min}.",
@@ -41,9 +41,8 @@ const REPLACED: [RegExp, string][] = [
   [/^(click|double_click|right_click|invoke|check|uncheck)$/, "computer_click"], [/^(type_text|type|fill|set_value)$/, "computer_type"],
   [/^(key|hotkey|press)$/, "computer_press"], [/^hold$/, "computer_press with hold_ms"], [/^(scroll|wheel)$/, "computer_scroll"], [/^drag$/, "computer_drag"], [/^(hover|move_pointer)$/, "computer_hover"],
   [/^(select|select_option|menu)$/, "computer_select"], [/^(timeline|sequence)$/, "computer_timeline"],
-  [/^(open|open_browser|open_sandbox|open_session|attach_browser|webview2_debugging)$/, "computer_open"],
+  [/^(open|open_sandbox|open_session)$/, "computer_open"],
   [/^(move|resize|minimize|maximize|restore|name)$/, "computer_window (a pointer move: computer_hover; resize of a display: computer_display)"], [/^(wait_for|verify)$/, "computer_wait"],
-  [/^(navigate|back|forward|reload|wait_load|new_tab|switch_tab|close_tab|dialog|upload|wait_download|cancel_download|evaluate)$/, "computer_browser"],
   [/^(put|get|files)$/, "computer_files"], [/^clipboard_/, "computer_clipboard"], [/^(record_start|record_stop|audio_record)$/, "computer_record"],
   [/^(close|kill)$/, "Delete (kill: Delete with ?force=true)"], [/^setup$/, "/computer-setup, which only the user runs (ask them)"], [/^batch$/, "Codemode: a script that calls the computer_* tools in order"],
 ];
@@ -461,7 +460,7 @@ export async function registerComputerProvider(pi: ExtensionAPI, getSession: (cw
   readonly registerCapabilities: (tools: readonly string[], namespace: { name: string; description: string }) => void }> {
   const accepted = new Set<string>();
   const guide = await readFile(new URL("../docs/computer-resources.md", import.meta.url), "utf8");
-  connectAgentDocumentation(pi, [{ id: "computer", description: "Windows app windows, displays and browser pages: look with read and search, act with the computer_* tools",
+  connectAgentDocumentation(pi, [{ id: "computer", description: "Native Windows UIA, screenshots and input; no browser DOM/CDP controls",
     markdown: fillToolNames(guide, IDE_TOOL_NAMES),
     triggers: ["read", "search"].map(tool => ({ tool, resourcePrefixes: ["computer:"] })) }]);
   const resources = new ComputerResources(getSession, closeSession, openSandbox, connectMachine, getMode);
@@ -490,7 +489,7 @@ export async function registerComputerProvider(pi: ExtensionAPI, getSession: (cw
     optional(connectReadPlugin(pi, { protocol: READ_PROTOCOL, apiVersion: READ_API_VERSION, id: "computer", setup(api) {
       accepted.add("read");
       api.addResolver({ resolver, priority: -250, renderResult: computerReadRenderer(describe) as never });
-      for (const view of ["image", "ui", "full", "state", "dom", "region", "sequence", "frames", "capture", "element", "ocr", "changes", "regions", "aria"])
+      for (const view of ["image", "ui", "full", "state", "region", "sequence", "frames", "capture", "element", "ocr", "changes", "regions", "aria"])
         api.addView({ view, contentKind: "any", presenter: { id: `computer-${view}`, present: document => document } });
       api.addHandler({ stage: "read", when: { resolvedBy: resolver.id, contentKind: "any" }, async handler(context) {
         const { request, resolverContext } = context;
