@@ -15,7 +15,7 @@ describe("lean computer-use guidance", () => {
   });
 
   it("keeps safety, freshness and delivery boundaries explicit", () => {
-    for (const term of ["human_stop", "unknown", "Safe mode", "foreground", "latest", "Playwright", "close only", "switch_tab", "getByTitle", "fall back"]) {
+    for (const term of ["human_stop", "unknown", "Safe mode", "foreground", "latest", "Playwright", "close only", "getByTitle", "fall back"]) {
       expect(quick.toLowerCase()).toContain(term.toLowerCase());
     }
   });
@@ -26,7 +26,7 @@ describe("lean computer-use guidance", () => {
     for (const term of ["computer:machine/", "computer:window/", "computer:session", "computer_read", "computer_search"]) {
       expect(paths).toContain(term);
     }
-    for (const term of ["dom", "aria", "capture:", "element:", "frames:", "alone"]) {
+    for (const term of ["aria", "capture:", "element:", "frames:", "alone"]) {
       expect(views).toContain(term);
     }
   });
@@ -36,13 +36,16 @@ describe("lean computer-use guidance", () => {
     const pi = { registerTool(tool: typeof registered[number]) { registered.push(tool); } };
     const resources = { describe: () => undefined };
     registerComputerTools(pi as never, resources as never, STANDALONE_TOOL_NAMES);
-    expect(registered).toHaveLength(17);
+    expect(registered).toHaveLength(16);
+    expect(registered.some(tool => tool.name === "computer_browser")).toBe(false);
     expect(registered.every(tool => tool.exposure === "deferred")).toBe(true);
     const desc = (name: string, field: string) => registered.find(tool => tool.name === name)?.parameters?.properties?.[field]?.description ?? "";
     expect(desc("computer_view", "viewport")).toContain("1–32");
     expect(desc("computer_type", "text")).toContain("UIA");
-    expect(desc("computer_browser", "action")).toContain("new becomes active");
+    const openProps = registered.find(tool => tool.name === "computer_open")?.parameters?.properties ?? {};
+    for (const field of ["browser", "url", "profile", "webview2_debugging", "debugging"]) expect(openProps).not.toHaveProperty(field);
     expect(desc("computer_record", "action")).toContain("watch_stop");
     expect(desc("computer_wait", "mode")).toContain("check samples once");
+    expect(desc("computer_click", "target")).toContain("UIA");
   });
 });
