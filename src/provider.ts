@@ -51,7 +51,7 @@ export function computerEditRefusal(tool: "write" | "insert", input: Record<stri
   let action: unknown = tool === "write" ? "type_text" : undefined;
   if (tool === "insert" && typeof input.text === "string") try { action = (JSON.parse(input.text) as { action?: unknown })?.action; } catch { /* no action to map */ }
   const replacement = typeof action === "string" ? REPLACED.find(([pattern]) => pattern.test(action as string))?.[1] : undefined;
-  return `${tool === "write" ? "Write" : "Insert"} does not act on computer resources; nothing was sent. ${replacement ? `Use ${replacement}. ` : ""}Each operation has its own computer_* tool: tool_search loads them with "computer open window", "computer click hover drag scroll", "computer type press select timeline", "computer wait browser", "computer files clipboard record" or "computer view viewport".`;
+  return `${tool === "write" ? "Write" : "Insert"} does not act on computer resources; nothing was sent. ${replacement ? `Use ${replacement}. ` : ""}Each operation has its own computer_* tool: tool_search finds them with "computer open window", "computer click hover drag scroll", "computer type press select timeline", "computer wait", "computer files clipboard record" or "computer view viewport".`;
 }
 
 /** Present native resources without dumping provenance; full receipts remain in structured data. */
