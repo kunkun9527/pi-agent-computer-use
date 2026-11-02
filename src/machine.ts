@@ -4,8 +4,6 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { loadComputerConfig, readMachineSettings, type ComputerConfig } from "./config.ts";
 import { prepareRemoteRuntime } from "./remote-runtime.ts";
-import { prepareRemoteBrowser } from "./remote-browser.ts";
-import { RemotePreparationUncertain } from "./remote-provision-error.ts";
 import { ComputerRequestError, machineGuide, type MachineFactory, type SandboxFactory } from "./computer-resources.ts";
 import type { CuaVisionSettings } from "./cua-image-settings.ts";
 import { McpDriver } from "./driver.ts";
@@ -14,7 +12,6 @@ import { localRunner, sshRunner, type CommandRunner } from "./runner.ts";
 import { WindowsSandbox, runnerHost, sandboxOptions, waitForGuestDriver } from "./sandbox.ts";
 import { IsolatedSession } from "./isolated-session.ts";
 import { ComputerSession, type ComputerMode } from "./session.ts";
-import { WebBrowser, WebError } from "./web-browser.ts";
 import type { VisualSettings } from "./native-visuals.ts";
 import type { HumanStop } from "./human-stop.ts";
 
@@ -94,20 +91,11 @@ export function machineFactory(options: { getMode: () => ComputerMode; settings:
     const driver = new McpDriver({ command, ...(runtime ? { runtime } : {}), ...(machine.driverOverride ? { driverOverride: true as const } : {}), ...(escapeStop !== undefined ? { escapeStop } : {}), ssh: machine.ssh }, undefined, options.visuals, options.humanStop, options.sessionLabel);
     try { await waitForGuestDriver(driver, signal, 30_000); }
     catch (error) { await driver.close().catch(() => undefined); throw error; }
-    const launchWeb = async (launch: Parameters<typeof WebBrowser.launch>[0], webSignal?: AbortSignal) => {
-      const prepared = await prepareRemoteBrowser(runner, webSignal, { node: machine.node, package: machine.package }).catch(error => {
-        if (error instanceof RemotePreparationUncertain) throw new WebError(error.message, false, true);
-        throw error;
-      });
-      const node = prepared.node;
-      const workerPackage = prepared.package;
-      if (machine.package) await checkRemoteWorker(runner, workerPackage, "the explicit browser worker override", webSignal);
-      return WebBrowser.launch({ ...launch, remote: { runner, node, worker: `${workerPackage}/src/web-worker.ts` } }, webSignal);
-    };
-    const remote = new ComputerSession(driver, options.getMode, options.settings, undefined, launchWeb, new MachineHost(runner));
+    // Remote machines expose native Windows UIA only.
+    const remote = new ComputerSession(driver, options.getMode, options.settings, undefined, undefined, new MachineHost(runner));
     return { ref: name, session: remote,
       describe: source => [`# Machine ${name}`, `Address: ${source}`, `SSH: ${machine.ssh}`,
-        "Browser: prepared automatically on first use", ...machineGuide(source)].join("\n"),
+        "Native UIA only; browser page automation disabled", ...machineGuide(source)].join("\n"),
       close: () => remote.close() };
   };
 }
