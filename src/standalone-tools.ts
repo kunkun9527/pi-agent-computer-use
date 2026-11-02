@@ -57,7 +57,7 @@ export function registerStandaloneTools(pi: ExtensionAPI, resources: ComputerRes
     description: "Find windows/apps or search an observation.",
     parameters: Type.Object({
       path: Type.String({ description: COMPUTER_SEARCH_HELP }),
-      query: Type.String({ description: "Name/text or regex:<pattern>." }),
+      query: Type.String({ description: "Name/text; regex:<pattern> (case-insensitive)." }),
       limit: Type.Optional(Type.Integer({ minimum: 1, description: "Result count." })),
     }, { additionalProperties: false }),
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },

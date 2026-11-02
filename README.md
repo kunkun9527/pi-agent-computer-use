@@ -4,6 +4,8 @@
 
 <h1 align="center">Pi Agent Computer Use</h1>
 
+> **Desktop-only fork:** Browser launch/attachment and Playwright page tools are disabled in this fork. Use a separate browser extension for DOM/CDP work. Chrome/Edge windows remain accessible through native Windows UIA, screenshots and input. Browser sections below describe upstream functionality, not this fork.
+
 <p align="center">Lets your Pi agent use Windows apps and browsers: it reads the window, clicks, types, draws and checks what happened.</p>
 
 <div align="center">

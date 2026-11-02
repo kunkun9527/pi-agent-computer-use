@@ -30,7 +30,7 @@ test("production Pi exposes only computer tools, with no direct or Codemode brow
       ],
     }).run("Check the production loadout. Only discover apps; never open a window or send input.");
     // Without Pi Agent IDE, production computer use offers deferred tools that tool_search loads.
-    const standalone = ["computer_browser", "computer_click", "computer_clipboard", "computer_delete", "computer_display", "computer_drag", "computer_files", "computer_hover", "computer_open",
+    const standalone = ["computer_click", "computer_clipboard", "computer_delete", "computer_display", "computer_drag", "computer_files", "computer_hover", "computer_open",
       "computer_press", "computer_read", "computer_record", "computer_scroll", "computer_search", "computer_select", "computer_timeline", "computer_type", "computer_view", "computer_wait", "computer_window"];
     expect(getToolExecutionDetails(getToolExecution(result, "registry"))).toEqual({
       names: standalone,

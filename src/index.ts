@@ -13,7 +13,6 @@ import { fillToolNames, IDE_TOOL_NAMES, STANDALONE_TOOL_NAMES } from "./tool-nam
 import { registerStandaloneTools } from "./standalone-tools.ts";
 import { computerNamespace, registerComputerTools } from "./computer-tools.ts";
 import { registerToolOmission } from "./responses-tools.ts";
-import { WebBrowser } from "./web-browser.ts";
 import { localRunner } from "./runner.ts";
 import { MachineHost } from "./machine-host.ts";
 import { machineFactory, sandboxFactory } from "./machine.ts";
@@ -62,7 +61,7 @@ export default async function computerUse(pi: ExtensionAPI): Promise<void> {
       const driver = new McpDriver(config, undefined, visuals, humanStop, sessionLabel);
       overviewKernel = driver.overviewKernel ?? "lanczos3";
       session = new ComputerSession(driver, getMode, () => images.settings(), undefined,
-        driver.platform === "windows" ? (options, signal) => WebBrowser.launch({ ...options, interop: config.interop }, signal) : undefined,
+        undefined, // Desktop-only: no browser worker or Playwright launcher.
         driver.platform === "windows" ? new MachineHost(localRunner(config.interop)) : undefined);
       return session;
     });
