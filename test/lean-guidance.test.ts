@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { computerPathHelp, computerViewsHelp } from "../src/provider.ts";
+import { registerComputerTools } from "../src/computer-tools.ts";
 import { STANDALONE_TOOL_NAMES } from "../src/tool-names.ts";
 
 const quick = readFileSync(new URL("../docs/computer-resources.md", import.meta.url), "utf8");
@@ -8,13 +9,13 @@ const full = readFileSync(new URL("../docs/computer-resources-reference.md", imp
 
 describe("lean computer-use guidance", () => {
   it("keeps the injected guide small while retaining full reference", () => {
-    expect(quick.length).toBeLessThan(3000);
+    expect(quick.length).toBeLessThan(3500);
     expect(full.length).toBeGreaterThan(quick.length);
     expect(quick).toContain("computer-resources-reference.md");
   });
 
   it("keeps safety, freshness and delivery boundaries explicit", () => {
-    for (const term of ["human_stop", "unknown", "Safe mode", "foreground", "latest", "Playwright", "close only"]) {
+    for (const term of ["human_stop", "unknown", "Safe mode", "foreground", "latest", "Playwright", "close only", "switch_tab", "getByTitle", "fall back"]) {
       expect(quick.toLowerCase()).toContain(term.toLowerCase());
     }
   });
@@ -25,8 +26,23 @@ describe("lean computer-use guidance", () => {
     for (const term of ["computer:machine/", "computer:window/", "computer:session", "computer_read", "computer_search"]) {
       expect(paths).toContain(term);
     }
-    for (const term of ["dom", "aria", "capture:", "element:", "frames:"]) {
+    for (const term of ["dom", "aria", "capture:", "element:", "frames:", "alone"]) {
       expect(views).toContain(term);
     }
+  });
+
+  it("keeps the 17 typed action tools deferred and key calling instructions visible", () => {
+    const registered: { name: string; exposure?: string; parameters?: { properties?: Record<string, { description?: string }> } }[] = [];
+    const pi = { registerTool(tool: typeof registered[number]) { registered.push(tool); } };
+    const resources = { describe: () => undefined };
+    registerComputerTools(pi as never, resources as never, STANDALONE_TOOL_NAMES);
+    expect(registered).toHaveLength(17);
+    expect(registered.every(tool => tool.exposure === "deferred")).toBe(true);
+    const desc = (name: string, field: string) => registered.find(tool => tool.name === name)?.parameters?.properties?.[field]?.description ?? "";
+    expect(desc("computer_view", "viewport")).toContain("1–32");
+    expect(desc("computer_type", "text")).toContain("UIA");
+    expect(desc("computer_browser", "action")).toContain("new becomes active");
+    expect(desc("computer_record", "action")).toContain("watch_stop");
+    expect(desc("computer_wait", "mode")).toContain("check samples once");
   });
 });
