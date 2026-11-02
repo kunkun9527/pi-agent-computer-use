@@ -49,5 +49,10 @@ describe("lean computer-use guidance", () => {
     const waitProps = registered.find(tool => tool.name === "computer_wait")?.parameters?.properties ?? {};
     expect(waitProps).not.toHaveProperty("url_contains");
     expect(desc("computer_click", "target")).toContain("UIA");
+    for (const name of ["computer_click","computer_hover","computer_drag","computer_scroll","computer_type","computer_press","computer_select","computer_timeline"]) {
+      const props = registered.find(tool => tool.name === name)?.parameters?.properties ?? {};
+      expect(props).not.toHaveProperty("space");
+    }
+    expect(JSON.stringify(registered)).not.toContain("computer_browser");
   });
 });
