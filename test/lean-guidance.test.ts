@@ -46,6 +46,8 @@ describe("lean computer-use guidance", () => {
     for (const field of ["browser", "url", "profile", "webview2_debugging", "debugging"]) expect(openProps).not.toHaveProperty(field);
     expect(desc("computer_record", "action")).toContain("watch_stop");
     expect(desc("computer_wait", "mode")).toContain("check samples once");
+    const waitProps = registered.find(tool => tool.name === "computer_wait")?.parameters?.properties ?? {};
+    expect(waitProps).not.toHaveProperty("url_contains");
     expect(desc("computer_click", "target")).toContain("UIA");
   });
 });
