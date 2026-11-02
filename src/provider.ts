@@ -29,7 +29,7 @@ export const computerPathHelp = (names: ComputerToolNames) => [
   "computer:session — current resources. Use fresh refs; docs:computer explains more.",
 ].join("\n");
 export const computerViewsHelp = (names: ComputerToolNames) => [
-  "Window: full (default), image, ui, aria, state, changes; browser: dom[:{target,depth,boxes,log}].",
+  "Window: full (default), image, ui, aria, changes; state alone; browser: dom[:{target,depth,boxes,log}] alone.",
   "Extras: ocr, regions, element:inspect|scope|highlight|crop|text,<ref>, region:x,y,w,h.",
   `Capture: capture:{maxLongEdge,scale,max_elements,max_depth,hints} in ${names.read}.`,
   "Frames: frames:first|last|all|endpoints|changed or frames:{indexes|from,to,as:sheet|max|min}.",
