@@ -35,7 +35,7 @@ test("without Pi Agent IDE, tool_search finds the deferred computer tools and th
     { id: "session", name: "computer_read", arguments: { path: "computer:session" } },
     { id: "close", name: "computer_delete", arguments: { path: "computer:session" } },
     { id: "open", name: "tool_search", arguments: { query: "computer open window" } },
-    { id: "more", name: "tool_search", arguments: { query: "computer wait browser" } },
+    { id: "more", name: "tool_search", arguments: { query: "computer wait" } },
     { id: "display", name: "computer_display", arguments: { display: "computer:display/primary", width: 1920, height: 1080 } },
     { id: "files", name: "tool_search", arguments: { query: "computer files clipboard record" } },
     { id: "view", name: "tool_search", arguments: { query: "computer view viewport" } },
@@ -54,7 +54,7 @@ test("without Pi Agent IDE, tool_search finds the deferred computer tools and th
   // A query lists only tools it newly loads; together the guide's cluster queries load every computer tool.
   const loaded = ["find", "open", "more", "files", "view", "input", "keys"].map(id => getToolResultText(result, id)).join("\n");
   for (const tool of ["computer_search", "computer_delete", "computer_open", "computer_window", "computer_view", "computer_display",
-    "computer_wait", "computer_browser", "computer_files", "computer_clipboard", "computer_record", "computer_click", "computer_hover", "computer_drag",
+    "computer_wait", "computer_files", "computer_clipboard", "computer_record", "computer_click", "computer_hover", "computer_drag",
     "computer_scroll", "computer_type", "computer_press", "computer_select", "computer_timeline"]) expect(loaded).toContain(`- ${tool}:`);
   // Input goes to a window address and refuses anything else before native work.
   expect(getToolExecution(result, "click").isError).toBe(true);
@@ -68,7 +68,7 @@ test("without Pi Agent IDE, tool_search finds the deferred computer tools and th
   expect(getToolResultText(result, "display")).not.toContain("unknown");
   expect(getToolResultText(result, "display")).toContain("Display addresses name their machine");
   expect(getToolResultText(result, "delete")).toContain("Computer closed");
-  expect(getToolResultText(result, "guide")).toMatch(/^# Computer\n/);
+  expect(getToolResultText(result, "guide")).toMatch(/^# Computer use\n/);
   // The guide names the standalone tools, never a placeholder.
   expect(getToolResultText(result, "guide")).toContain("computer_read");
   expect(getToolResultText(result, "guide")).not.toMatch(/\{(read|search|delete)\}/);
@@ -89,7 +89,7 @@ test("an IDE that refuses this plugin API version leaves computer use standalone
   expect(getToolResultText(result, "session")).toContain("computer:machine/local");
   // As with the IDE, the first read of a computer address brings the guide with the standalone names, and only once.
   expect(getToolResultText(result, "session")).toContain("# Guide: computer");
-  expect(getToolResultText(result, "session")).toContain("computer_read of a viewport only looks");
+  expect(getToolResultText(result, "session")).toContain("Native window/viewport points");
   expect(getToolResultText(result, "again")).not.toContain("# Guide: computer");
 }, 120_000);
 
@@ -103,7 +103,7 @@ test("without Pi Agent IDE, a script's first computer_read brings the guide to t
   expect(getToolExecution(result, "script").isError, getToolResultText(result, "script")).toBe(false);
   expect(getToolResultText(result, "script")).toContain("read twice");
   expect(getToolResultText(result, "script").split("# Guide: computer").length).toBe(2);
-  expect(getToolResultText(result, "script")).toContain("computer_read of a viewport only looks");
+  expect(getToolResultText(result, "script")).toContain("Native window/viewport points");
   expect(getToolResultText(result, "after")).toContain("computer:machine/local");
   expect(getToolResultText(result, "after")).not.toContain("# Guide: computer");
 }, 120_000);
@@ -113,7 +113,7 @@ test("with Pi Agent IDE, computer use extends Read, Search and Delete, refuses W
     const result = await run("with-ide", extensions, ["read", "write", "insert", "delete", "tool_search"], [
       { id: "find", name: "tool_search", arguments: { query: "computer read windows displays" } },
       { id: "open", name: "tool_search", arguments: { query: "computer open window" } },
-      { id: "more", name: "tool_search", arguments: { query: "computer wait browser" } },
+      { id: "more", name: "tool_search", arguments: { query: "computer wait" } },
       { id: "files", name: "tool_search", arguments: { query: "computer files clipboard record" } },
       { id: "view", name: "tool_search", arguments: { query: "computer view viewport" } },
       { id: "input", name: "tool_search", arguments: { query: "computer click hover drag scroll" } },
@@ -131,14 +131,14 @@ test("with Pi Agent IDE, computer use extends Read, Search and Delete, refuses W
     const loaded = ["find", "open", "more", "files", "view", "input", "keys"].map(id => getToolResultText(result, id)).join("\n");
     expect(loaded).not.toContain("computer_read");
     expect(loaded).not.toContain("computer_delete");
-    for (const tool of ["computer_open", "computer_window", "computer_view", "computer_display", "computer_wait", "computer_browser", "computer_files", "computer_clipboard", "computer_record",
+    for (const tool of ["computer_open", "computer_window", "computer_view", "computer_display", "computer_wait", "computer_files", "computer_clipboard", "computer_record",
       "computer_click", "computer_hover", "computer_drag", "computer_scroll", "computer_type", "computer_press", "computer_select", "computer_timeline"]) expect(loaded).toContain(`- ${tool}:`);
     for (const id of ["session", "close", "delete"])
       expect(getToolExecution(result, id).isError, getToolResultText(result, id)).toBe(false);
     expect(getToolResultText(result, "session")).toContain("computer:machine/local");
     // The first Read of a computer address brings the guide, with the IDE's tool names filled in.
     expect(getToolResultText(result, "session")).toContain("# Guide: computer");
-    expect(getToolResultText(result, "session")).toContain("read of a viewport only looks");
+    expect(getToolResultText(result, "session")).toContain("Native window/viewport points");
     expect(getToolResultText(result, "session")).not.toMatch(/\{(read|search|delete)\}|computer_read/);
     // Write and Insert only name the typed tool that does what they were sent; nothing reaches a machine.
     for (const id of ["insert", "write"]) expect(getToolExecution(result, id).isError).toBe(true);
